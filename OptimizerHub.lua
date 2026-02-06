@@ -1,217 +1,215 @@
--- SCRIPT DE OTIMIZAÇÃO MÁXIMA 120 FPS (SEM GUI)
--- Versão Corrigida e Funcional
+-- SCRIPT DE OTIMIZAÇÃO 120 FPS - GRÁFICOS BAIXOS (SEM GUI)
+-- Mantém os gráficos normais do jogo, apenas reduz a qualidade
 
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 
 local Player = Players.LocalPlayer
 
--- CONFIGURAÇÃO DE FPS
+-- CONFIGURAÇÃO DE FPS MÁXIMO
 if setfpscap then
     setfpscap(120)
-elseif sethiddenproperty then
-    sethiddenproperty(game, "NetworkSettings.IncomingReplicationLag", 0)
 end
 
--- OTIMIZAÇÃO COMPLETA DE ILUMINAÇÃO
-pcall(function()
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    Lighting.FogStart = 0
-    Lighting.Brightness = 0
-    Lighting.EnvironmentDiffuseScale = 0
-    Lighting.EnvironmentSpecularScale = 0
-    Lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
-    Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
-end)
-
--- REMOVER TODOS OS EFEITOS DE ILUMINAÇÃO
-for _, v in pairs(Lighting:GetChildren()) do
-    if v:IsA("PostEffect") then
-        v.Enabled = false
-    end
-end
-
--- OTIMIZAÇÃO DE TERRENO
-pcall(function()
-    local terrain = Workspace:FindFirstChildOfClass("Terrain")
-    if terrain then
-        terrain.WaterWaveSize = 0
-        terrain.WaterWaveSpeed = 0
-        terrain.WaterReflectance = 0
-        terrain.WaterTransparency = 0
-        terrain.Decoration = false
-    end
-end)
-
--- CONFIGURAÇÕES DE RENDERIZAÇÃO
+-- REDUZIR QUALIDADE GRÁFICA PARA BAIXO
 pcall(function()
     settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
     settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+    settings().Rendering.EditQualityLevel = Enum.QualityLevel.Level01
 end)
 
--- FUNÇÃO PRINCIPAL DE OTIMIZAÇÃO
-local function OptimizarTudo()
-    -- Otimizar Workspace
+-- CONFIGURAÇÕES DE ILUMINAÇÃO (Mantém visual mas reduz qualidade)
+pcall(function()
+    Lighting.GlobalShadows = false  -- Desativa sombras (maior impacto em FPS)
+    Lighting.EnvironmentDiffuseScale = 0.5  -- Reduz iluminação ambiente
+    Lighting.EnvironmentSpecularScale = 0.5  -- Reduz reflexos ambientais
+    
+    -- Mantém as cores e ambiente do jogo normais
+    -- Não altera: Brightness, FogEnd, OutdoorAmbient, Ambient
+end)
+
+-- REDUZIR QUALIDADE DE EFEITOS (Mantém mas com menos intensidade)
+for _, effect in pairs(Lighting:GetChildren()) do
+    pcall(function()
+        if effect:IsA("BloomEffect") then
+            effect.Intensity = effect.Intensity * 0.3  -- Reduz bloom em 70%
+            effect.Size = 10
+            effect.Threshold = 2
+        elseif effect:IsA("BlurEffect") then
+            effect.Size = effect.Size * 0.3  -- Reduz blur em 70%
+        elseif effect:IsA("SunRaysEffect") then
+            effect.Intensity = effect.Intensity * 0.3
+        elseif effect:IsA("ColorCorrectionEffect") then
+            -- Mantém correção de cor intacta
+        elseif effect:IsA("DepthOfFieldEffect") then
+            effect.FarIntensity = effect.FarIntensity * 0.5
+            effect.NearIntensity = effect.NearIntensity * 0.5
+        end
+    end)
+end
+
+-- OTIMIZAR TERRENO (Mantém visual mas reduz detalhes)
+pcall(function()
+    local terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        terrain.WaterWaveSize = 0.05  -- Ondas mínimas mas visíveis
+        terrain.WaterWaveSpeed = 5
+        terrain.WaterReflectance = 0.1  -- Reflexo mínimo
+        terrain.Decoration = false  -- Remove decoração extra
+    end
+end)
+
+-- OTIMIZAR PARTÍCULAS (Reduz quantidade mas mantém ativas)
+local function OtimizarParticulas()
     for _, obj in pairs(Workspace:GetDescendants()) do
         pcall(function()
-            -- Remover Partículas
-            if obj:IsA("ParticleEmitter") then
-                obj.Enabled = false
-                obj.Rate = 0
+            -- Partículas - Reduz rate em 70%
+            if obj:IsA("ParticleEmitter") and obj.Enabled then
+                obj.Rate = math.max(1, obj.Rate * 0.3)
+                obj.Lifetime = NumberRange.new(
+                    obj.Lifetime.Min * 0.5, 
+                    obj.Lifetime.Max * 0.5
+                )
             end
             
-            -- Remover Trails
-            if obj:IsA("Trail") then
-                obj.Enabled = false
-                obj.Lifetime = 0
+            -- Trails - Reduz lifetime
+            if obj:IsA("Trail") and obj.Enabled then
+                obj.Lifetime = obj.Lifetime * 0.5
             end
             
-            -- Remover Beams
-            if obj:IsA("Beam") then
-                obj.Enabled = false
+            -- Fogo - Reduz tamanho
+            if obj:IsA("Fire") and obj.Enabled then
+                obj.Size = obj.Size * 0.5
             end
             
-            -- Remover Fogo/Fumaça/Sparkles
-            if obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-                obj.Enabled = false
+            -- Fumaça - Reduz opacidade e tamanho
+            if obj:IsA("Smoke") and obj.Enabled then
+                obj.Opacity = obj.Opacity * 0.5
+                obj.Size = obj.Size * 0.5
             end
             
-            -- Remover Explosões
-            if obj:IsA("Explosion") then
-                obj.BlastPressure = 0
-                obj.BlastRadius = 0
-            end
-            
-            -- Desativar Luzes
+            -- Luzes - Reduz brilho e alcance
             if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
-                obj.Enabled = false
-                obj.Brightness = 0
+                if obj.Enabled then
+                    obj.Brightness = obj.Brightness * 0.6
+                    obj.Range = obj.Range * 0.7
+                end
             end
             
-            -- Otimizar Partes
+            -- Partes - Remove sombras mas mantém material e cor
             if obj:IsA("BasePart") then
-                obj.Material = Enum.Material.Plastic
-                obj.Reflectance = 0
                 obj.CastShadow = false
+                -- Mantém: Material, Color, Transparency, Reflectance
             end
             
-            -- Otimizar MeshParts
+            -- MeshParts - Remove sombras mas mantém texturas
             if obj:IsA("MeshPart") then
-                obj.Material = Enum.Material.Plastic
-                obj.Reflectance = 0
-                obj.TextureID = ""
                 obj.CastShadow = false
-            end
-            
-            -- Remover Decals/Textures
-            if obj:IsA("Decal") then
-                obj.Transparency = 1
-            end
-            
-            if obj:IsA("Texture") then
-                obj.Transparency = 1
+                -- Mantém: TextureID, Material, Color
             end
         end)
     end
 end
 
 -- EXECUTAR OTIMIZAÇÃO INICIAL
-OptimizarTudo()
+OtimizarParticulas()
 
 -- OTIMIZAR PERSONAGEM DO JOGADOR
-if Player.Character then
-    for _, obj in pairs(Player.Character:GetDescendants()) do
+local function OtimizarPersonagem(character)
+    if not character then return end
+    
+    for _, obj in pairs(character:GetDescendants()) do
         pcall(function()
-            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-                obj.Enabled = false
+            if obj:IsA("ParticleEmitter") and obj.Enabled then
+                obj.Rate = math.max(1, obj.Rate * 0.3)
             end
-            if obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-                obj.Enabled = false
+            if obj:IsA("Trail") and obj.Enabled then
+                obj.Lifetime = obj.Lifetime * 0.5
             end
             if obj:IsA("PointLight") or obj:IsA("SpotLight") then
-                obj.Enabled = false
+                if obj.Enabled then
+                    obj.Brightness = obj.Brightness * 0.6
+                    obj.Range = obj.Range * 0.7
+                end
             end
         end)
     end
 end
 
--- OTIMIZAR QUANDO SPAWNAR
+-- Otimizar personagem atual
+if Player.Character then
+    OtimizarPersonagem(Player.Character)
+end
+
+-- Otimizar quando spawnar
 Player.CharacterAdded:Connect(function(char)
-    wait(0.2)
-    for _, obj in pairs(char:GetDescendants()) do
-        pcall(function()
-            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-                obj.Enabled = false
-            end
-            if obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-                obj.Enabled = false
-            end
-            if obj:IsA("PointLight") or obj:IsA("SpotLight") then
-                obj.Enabled = false
-            end
-        end)
-    end
+    wait(0.5)
+    OtimizarPersonagem(char)
 end)
 
 -- MONITORAR NOVOS OBJETOS
 Workspace.DescendantAdded:Connect(function(obj)
     pcall(function()
         if obj:IsA("ParticleEmitter") then
-            obj.Enabled = false
-            obj.Rate = 0
+            wait(0.1)
+            if obj.Enabled then
+                obj.Rate = math.max(1, obj.Rate * 0.3)
+                obj.Lifetime = NumberRange.new(
+                    obj.Lifetime.Min * 0.5, 
+                    obj.Lifetime.Max * 0.5
+                )
+            end
         elseif obj:IsA("Trail") then
-            obj.Enabled = false
-        elseif obj:IsA("Beam") then
-            obj.Enabled = false
-        elseif obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-            obj.Enabled = false
+            wait(0.1)
+            if obj.Enabled then
+                obj.Lifetime = obj.Lifetime * 0.5
+            end
+        elseif obj:IsA("Fire") then
+            wait(0.1)
+            if obj.Enabled then
+                obj.Size = obj.Size * 0.5
+            end
+        elseif obj:IsA("Smoke") then
+            wait(0.1)
+            if obj.Enabled then
+                obj.Opacity = obj.Opacity * 0.5
+                obj.Size = obj.Size * 0.5
+            end
         elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
-            obj.Enabled = false
-        elseif obj:IsA("BasePart") then
-            obj.Material = Enum.Material.Plastic
-            obj.Reflectance = 0
+            wait(0.1)
+            if obj.Enabled then
+                obj.Brightness = obj.Brightness * 0.6
+                obj.Range = obj.Range * 0.7
+            end
+        elseif obj:IsA("BasePart") or obj:IsA("MeshPart") then
             obj.CastShadow = false
-        elseif obj:IsA("MeshPart") then
-            obj.Material = Enum.Material.Plastic
-            obj.Reflectance = 0
-            obj.TextureID = ""
-            obj.CastShadow = false
-        elseif obj:IsA("Decal") or obj:IsA("Texture") then
-            obj.Transparency = 1
         end
     end)
 end)
 
--- LOOP DE RE-OTIMIZAÇÃO (A cada 15 segundos)
+-- LOOP DE RE-OTIMIZAÇÃO (A cada 20 segundos, suave)
 spawn(function()
-    while wait(15) do
-        OptimizarTudo()
+    while wait(20) do
+        OtimizarParticulas()
     end
 end)
 
--- REMOVER SONS DESNECESSÁRIOS
+-- OTIMIZAÇÃO DE ÁUDIO (Reduz qualidade mas mantém sons)
 spawn(function()
     for _, sound in pairs(game:GetDescendants()) do
         if sound:IsA("Sound") then
             pcall(function()
-                if not sound.Playing then
-                    sound.Volume = 0
+                -- Mantém sons importantes, reduz volume dos menos importantes
+                if not sound.Playing and sound.Volume > 0.5 then
+                    sound.Volume = sound.Volume * 0.7
                 end
             end)
         end
     end
 end)
 
--- OTIMIZAÇÃO ADICIONAL DE PERFORMANCE
-pcall(function()
-    UserInputService.MouseIconEnabled = true
-    game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
-end)
-
-print("✅ Otimização Máxima Ativada - 120 FPS")
-print("✅ Todos os efeitos visuais desabilitados")
-print("✅ Performance maximizada sem GUI")
+print("✅ Otimização 120 FPS Ativada")
+print("✅ Gráficos mantidos em qualidade BAIXA")
+print("✅ Performance melhorada sem perder visual")
